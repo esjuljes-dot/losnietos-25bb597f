@@ -68,11 +68,48 @@ function CustomerPage() {
   };
 
   const finishOrder = (method: "mp" | "cash") => {
+    const orderId = `ORD-2024-${Math.floor(Math.random() * 900 + 100)}`;
+    const r: Receipt = {
+      id: orderId,
+      date: new Date().toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }),
+      items: cart,
+      subtotal,
+      shipping,
+      total,
+      method,
+      mpId: method === "mp" ? mpId : undefined,
+      status: method === "mp" ? "PAGADO" : "PAGO AL ENTREGAR",
+    };
+    setReceipt(r);
     setCart([]);
     setModal("success");
-    setWa(`📱 WhatsApp: ✓ Pedido confirmado. ORD-2024-${Math.floor(Math.random() * 900 + 100)}`);
+    setWa(`📱 WhatsApp: ✓ ${r.status} · ${orderId} · $${r.total}`);
     setTimeout(() => setWa(null), 4500);
-    if (method === "cash") showToast("✓ Pago en efectivo confirmado");
+    showToast(method === "mp" ? "✓ Pago confirmado por Mercado Pago" : "✓ Pedido registrado · Cobro al entregar");
+  };
+
+  const downloadReceipt = () => {
+    if (!receipt) return;
+    const lines = [
+      "LOS NIETOS — COMPROBANTE",
+      `Folio: ${receipt.id}`,
+      `Fecha: ${receipt.date}`,
+      `Estado: ${receipt.status}`,
+      `Método: ${receipt.method === "mp" ? `Mercado Pago (${receipt.mpId})` : "Efectivo al entregar"}`,
+      "",
+      ...receipt.items.map((i) => `${i.qty} × ${i.name}  $${i.price * i.qty}`),
+      "",
+      `Subtotal: $${receipt.subtotal}`,
+      `Envío: ${receipt.shipping === 0 ? "GRATIS" : `$${receipt.shipping}`}`,
+      `TOTAL: $${receipt.total}`,
+    ].join("\n");
+    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${receipt.id}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
