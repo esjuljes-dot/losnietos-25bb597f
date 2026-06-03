@@ -33,6 +33,8 @@ function CustomerPage() {
   const [modal, setModal] = useState<Modal>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [wa, setWa] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [mpId] = useState(() => `MP-${Math.random().toString(36).slice(2, 11).toUpperCase()}`);
 
   const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.qty, 0), [cart]);
   const shipping = subtotal === 0 ? 0 : subtotal >= 500 ? 0 : 30;
