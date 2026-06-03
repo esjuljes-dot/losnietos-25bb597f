@@ -15,6 +15,17 @@ export const Route = createFileRoute("/customer")({
 
 type CartItem = Product & { qty: number };
 type Modal = null | "ai" | "payment" | "mp" | "success";
+type Receipt = {
+  id: string;
+  date: string;
+  items: CartItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+  method: "mp" | "cash";
+  mpId?: string;
+  status: "PAGADO" | "PAGO AL ENTREGAR";
+};
 
 function CustomerPage() {
   const navigate = useNavigate();
