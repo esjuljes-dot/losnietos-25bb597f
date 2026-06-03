@@ -107,7 +107,7 @@ function CustomerPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${receipt.id}.txt`;
+    a.download = `Los-Nietos-${receipt.id}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
