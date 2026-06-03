@@ -259,7 +259,7 @@ function CustomerPage() {
             <div className="text-xs text-muted-foreground">Total a pagar</div>
             <div className="font-display text-3xl my-1">${total}</div>
             <div className="text-[11px] text-muted-foreground">
-              ID: MP-{Math.random().toString(36).slice(2, 11).toUpperCase()}
+              ID: {mpId}
             </div>
           </div>
           <button
