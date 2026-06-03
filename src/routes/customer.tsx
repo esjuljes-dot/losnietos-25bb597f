@@ -271,19 +271,69 @@ function CustomerPage() {
         </Modal>
       )}
 
-      {modal === "success" && (
-        <Modal onClose={() => { setModal(null); navigate({ to: "/" }); }} accent="var(--brand-green)" title="">
-          <div className="text-center py-4">
-            <div className="text-6xl mb-2">✓</div>
+      {modal === "success" && receipt && (
+        <Modal
+          onClose={() => { setModal(null); navigate({ to: "/" }); }}
+          accent={receipt.method === "mp" ? "var(--brand-blue)" : "var(--brand-green)"}
+          title=""
+        >
+          <div className="text-center">
+            <div className="text-5xl mb-1">✓</div>
             <h3 className="font-display text-2xl">¡Pedido Confirmado!</h3>
-            <p className="text-sm text-muted-foreground mt-2">
-              Llegará en 30 minutos.<br />📱 WhatsApp enviado.
-            </p>
+            <span
+              className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: receipt.method === "mp" ? "var(--brand-green)" : "var(--brand-orange)" }}
+            >
+              {receipt.status}
+            </span>
+          </div>
+
+          <div className="mt-4 rounded-xl border-2 border-dashed p-4 text-sm" style={{ borderColor: "var(--border)" }}>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Comprobante</span>
+              <span>{receipt.date}</span>
+            </div>
+            <div className="font-mono text-sm font-bold mt-0.5">{receipt.id}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {receipt.method === "mp" ? `Mercado Pago · ${receipt.mpId}` : "Efectivo al entregar"}
+            </div>
+
+            <ul className="mt-3 divide-y divide-border">
+              {receipt.items.map((i) => (
+                <li key={i.id} className="py-1.5 flex justify-between">
+                  <span>{i.qty} × {i.name}</span>
+                  <span className="font-semibold">${i.price * i.qty}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="h-px bg-border my-2" />
+            <Row label="Subtotal" value={`$${receipt.subtotal}`} />
+            <Row
+              label="Envío"
+              value={receipt.shipping === 0 ? "GRATIS" : `$${receipt.shipping}`}
+              valueColor={receipt.shipping === 0 ? "var(--brand-green)" : undefined}
+            />
+            <Row label="TOTAL" value={`$${receipt.total}`} bold valueColor="var(--brand-red)" />
+          </div>
+
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            Llegará en 30 minutos · 📱 WhatsApp enviado
+          </p>
+
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={downloadReceipt}
+              className="flex-1 rounded-xl py-3 font-semibold border-2"
+              style={{ borderColor: "var(--brand-blue)", color: "var(--brand-blue)" }}
+            >
+              ⬇ Descargar
+            </button>
             <button
               onClick={() => { setModal(null); navigate({ to: "/" }); }}
-              className="mt-5 w-full rounded-xl py-3 font-semibold text-white bg-gradient-green"
+              className="flex-1 rounded-xl py-3 font-semibold text-white bg-gradient-green"
             >
-              OK
+              Listo
             </button>
           </div>
         </Modal>
