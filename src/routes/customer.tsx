@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { RoleHeader } from "@/components/role-header";
-import { CATEGORY_COLOR, PRODUCTS, type Product } from "@/lib/los-nietos-data";
+import { CATEGORY_COLOR } from "@/lib/los-nietos-data";
+import { listProducts, type Product } from "@/lib/products.functions";
 
 export const Route = createFileRoute("/customer")({
   head: () => ({
@@ -29,6 +32,12 @@ type Receipt = {
 
 function CustomerPage() {
   const navigate = useNavigate();
+  const fetchProducts = useServerFn(listProducts);
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => fetchProducts(),
+  });
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [modal, setModal] = useState<Modal>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -55,15 +64,19 @@ function CustomerPage() {
     showToast(`✓ ${p.name} agregado`);
   };
 
-  const remove = (id: number) => setCart((c) => c.filter((i) => i.id !== id));
+  const remove = (id: string) => setCart((c) => c.filter((i) => i.id !== id));
 
   const quickOrder = () => {
-    const corona = PRODUCTS.find((p) => p.id === 1)!;
-    const hielo = PRODUCTS.find((p) => p.id === 4)!;
-    setCart([
-      { ...corona, qty: 5 },
-      { ...hielo, qty: 5 },
-    ]);
+    const corona = products.find((p) => p.name.toLowerCase().includes("corona"));
+    const hielo = products.find((p) => p.name.toLowerCase().includes("hielo"));
+    const items: CartItem[] = [];
+    if (corona) items.push({ ...corona, qty: 5 });
+    if (hielo) items.push({ ...hielo, qty: 5 });
+    if (items.length === 0) {
+      showToast("Sin productos disponibles");
+      return;
+    }
+    setCart(items);
     showToast("✓ Último pedido cargado");
   };
 
@@ -72,11 +85,7 @@ function CustomerPage() {
     const r: Receipt = {
       id: orderId,
       date: new Date().toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }),
-      items: cart,
-      subtotal,
-      shipping,
-      total,
-      method,
+      items: cart, subtotal, shipping, total, method,
       mpId: method === "mp" ? mpId : undefined,
       status: method === "mp" ? "PAGADO" : "PAGO AL ENTREGAR",
     };
@@ -117,7 +126,6 @@ function CustomerPage() {
       <RoleHeader title="🛒 Compra" right={<span className="text-sm">Hola, Carlos 👋</span>} />
 
       <main className="max-w-5xl mx-auto px-4 py-5 space-y-5">
-        {/* Quick order */}
         <section
           className="rounded-2xl p-4"
           style={{ background: "var(--soft-orange)", borderLeft: "4px solid var(--brand-orange)" }}
@@ -129,41 +137,44 @@ function CustomerPage() {
             onClick={quickOrder}
             className="mt-2 w-full sm:w-auto rounded-xl px-5 py-3 font-semibold text-white bg-gradient-orange shadow-card"
           >
-            Pedir lo mismo (Corona + Hielo) — $875
+            Pedir lo mismo (Corona + Hielo)
           </button>
         </section>
 
-        {/* AI button */}
-        <button
-          onClick={() => setModal("ai")}
-          className="rounded-xl px-5 py-3 font-semibold border-2 hover:bg-muted transition-colors"
-          style={{ borderColor: "var(--brand-purple)", color: "var(--brand-purple)" }}
-        >
-          💡 Ver recomendaciones IA
-        </button>
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">Cargando productos…</p>
+        ) : products.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            Aún no hay productos. El dueño debe darlos de alta en /owner.
+          </p>
+        ) : (
+          <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {products.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => add(p)}
+                disabled={p.stock <= 0}
+                className="bg-card rounded-2xl p-4 text-left shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-lift focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ border: `2px solid ${CATEGORY_COLOR[p.category] ?? "var(--brand-blue)"}` }}
+              >
+                <div className="text-3xl mb-1">🛍️</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {p.category}
+                </div>
+                <div className="text-sm font-semibold leading-tight">{p.name}</div>
+                <div className="text-base font-bold mt-1" style={{ color: "var(--brand-green)" }}>
+                  ${p.price}
+                </div>
+                {p.stock <= 0 && (
+                  <div className="text-[10px] mt-1 font-bold" style={{ color: "var(--brand-red)" }}>
+                    SIN STOCK
+                  </div>
+                )}
+              </button>
+            ))}
+          </section>
+        )}
 
-        {/* Products grid */}
-        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {PRODUCTS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => add(p)}
-              className="bg-card rounded-2xl p-4 text-left shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-lift focus:outline-none"
-              style={{ border: `2px solid ${CATEGORY_COLOR[p.category] ?? "var(--brand-blue)"}` }}
-            >
-              <div className="text-3xl mb-1">🛍️</div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {p.category}
-              </div>
-              <div className="text-sm font-semibold leading-tight">{p.name}</div>
-              <div className="text-base font-bold mt-1" style={{ color: "var(--brand-green)" }}>
-                ${p.price}
-              </div>
-            </button>
-          ))}
-        </section>
-
-        {/* Cart */}
         {cart.length > 0 && (
           <section className="bg-card rounded-2xl p-5 shadow-card">
             <h3 className="font-display text-lg mb-3">Mi carrito ({cart.length})</h3>
@@ -189,11 +200,7 @@ function CustomerPage() {
           </section>
         )}
 
-        {/* Summary */}
-        <section
-          className="bg-card rounded-2xl p-5"
-          style={{ border: "2px solid var(--brand-orange)" }}
-        >
+        <section className="bg-card rounded-2xl p-5" style={{ border: "2px solid var(--brand-orange)" }}>
           <Row label="Subtotal" value={`$${subtotal}`} />
           <Row
             label="Envío"
@@ -209,45 +216,18 @@ function CustomerPage() {
           >
             PAGAR EN 30 SEGUNDOS
           </button>
-          {cart.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center mt-2">Selecciona productos</p>
-          )}
         </section>
       </main>
 
-      {/* Modals */}
-      {modal === "ai" && (
-        <Modal onClose={() => setModal(null)} accent="var(--brand-red)" title="💡 Recomendaciones IA">
-          <Rec icon="🍺" title="Corona 600ml" body="Lo compras siempre. −10% HOY" tone="var(--brand-red)" />
-          <Rec icon="🎯" title="Combo Perfecto" body="Corona + Hielo. La mejor combinación" tone="var(--brand-green)" />
-          <button
-            onClick={() => setModal(null)}
-            className="mt-4 w-full rounded-xl py-3 font-semibold text-white bg-gradient-hero"
-          >
-            OK
-          </button>
-        </Modal>
-      )}
-
       {modal === "payment" && (
         <Modal onClose={() => setModal(null)} accent="var(--brand-blue)" title="Forma de pago">
-          <button
-            onClick={() => setModal("mp")}
-            className="w-full rounded-xl py-3 mt-2 font-semibold text-white"
-            style={{ background: "var(--brand-blue)" }}
-          >
+          <button onClick={() => setModal("mp")} className="w-full rounded-xl py-3 mt-2 font-semibold text-white" style={{ background: "var(--brand-blue)" }}>
             💳 Mercado Pago
           </button>
-          <button
-            onClick={() => finishOrder("cash")}
-            className="w-full rounded-xl py-3 mt-2 font-semibold text-white bg-gradient-green"
-          >
+          <button onClick={() => finishOrder("cash")} className="w-full rounded-xl py-3 mt-2 font-semibold text-white bg-gradient-green">
             💵 Efectivo
           </button>
-          <button
-            onClick={() => setModal(null)}
-            className="w-full rounded-xl py-3 mt-2 font-semibold bg-muted"
-          >
+          <button onClick={() => setModal(null)} className="w-full rounded-xl py-3 mt-2 font-semibold bg-muted">
             Cancelar
           </button>
         </Modal>
@@ -258,46 +238,31 @@ function CustomerPage() {
           <div className="rounded-xl p-4 bg-muted text-center">
             <div className="text-xs text-muted-foreground">Total a pagar</div>
             <div className="font-display text-3xl my-1">${total}</div>
-            <div className="text-[11px] text-muted-foreground">
-              ID: {mpId}
-            </div>
+            <div className="text-[11px] text-muted-foreground">ID: {mpId}</div>
           </div>
-          <button
-            onClick={() => finishOrder("mp")}
-            className="mt-4 w-full rounded-xl py-3 font-semibold text-white bg-gradient-green"
-          >
+          <button onClick={() => finishOrder("mp")} className="mt-4 w-full rounded-xl py-3 font-semibold text-white bg-gradient-green">
             ✓ Confirmar pago
           </button>
         </Modal>
       )}
 
       {modal === "success" && receipt && (
-        <Modal
-          onClose={() => { setModal(null); navigate({ to: "/" }); }}
-          accent={receipt.method === "mp" ? "var(--brand-blue)" : "var(--brand-green)"}
-          title=""
-        >
+        <Modal onClose={() => { setModal(null); navigate({ to: "/" }); }} accent={receipt.method === "mp" ? "var(--brand-blue)" : "var(--brand-green)"} title="">
           <div className="text-center">
             <div className="text-5xl mb-1">✓</div>
             <h3 className="font-display text-2xl">¡Pedido Confirmado!</h3>
-            <span
-              className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold text-white"
-              style={{ background: receipt.method === "mp" ? "var(--brand-green)" : "var(--brand-orange)" }}
-            >
+            <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold text-white" style={{ background: receipt.method === "mp" ? "var(--brand-green)" : "var(--brand-orange)" }}>
               {receipt.status}
             </span>
           </div>
-
           <div className="mt-4 rounded-xl border-2 border-dashed p-4 text-sm" style={{ borderColor: "var(--border)" }}>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Comprobante</span>
-              <span>{receipt.date}</span>
+              <span>Comprobante</span><span>{receipt.date}</span>
             </div>
             <div className="font-mono text-sm font-bold mt-0.5">{receipt.id}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {receipt.method === "mp" ? `Mercado Pago · ${receipt.mpId}` : "Efectivo al entregar"}
             </div>
-
             <ul className="mt-3 divide-y divide-border">
               {receipt.items.map((i) => (
                 <li key={i.id} className="py-1.5 flex justify-between">
@@ -306,53 +271,29 @@ function CustomerPage() {
                 </li>
               ))}
             </ul>
-
             <div className="h-px bg-border my-2" />
             <Row label="Subtotal" value={`$${receipt.subtotal}`} />
-            <Row
-              label="Envío"
-              value={receipt.shipping === 0 ? "GRATIS" : `$${receipt.shipping}`}
-              valueColor={receipt.shipping === 0 ? "var(--brand-green)" : undefined}
-            />
+            <Row label="Envío" value={receipt.shipping === 0 ? "GRATIS" : `$${receipt.shipping}`} valueColor={receipt.shipping === 0 ? "var(--brand-green)" : undefined} />
             <Row label="TOTAL" value={`$${receipt.total}`} bold valueColor="var(--brand-red)" />
           </div>
-
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            Llegará en 30 minutos · 📱 WhatsApp enviado
-          </p>
-
           <div className="flex gap-2 mt-4">
-            <button
-              onClick={downloadReceipt}
-              className="flex-1 rounded-xl py-3 font-semibold border-2"
-              style={{ borderColor: "var(--brand-blue)", color: "var(--brand-blue)" }}
-            >
+            <button onClick={downloadReceipt} className="flex-1 rounded-xl py-3 font-semibold border-2" style={{ borderColor: "var(--brand-blue)", color: "var(--brand-blue)" }}>
               ⬇ Descargar
             </button>
-            <button
-              onClick={() => { setModal(null); navigate({ to: "/" }); }}
-              className="flex-1 rounded-xl py-3 font-semibold text-white bg-gradient-green"
-            >
+            <button onClick={() => { setModal(null); navigate({ to: "/" }); }} className="flex-1 rounded-xl py-3 font-semibold text-white bg-gradient-green">
               Listo
             </button>
           </div>
         </Modal>
       )}
 
-      {/* Toasts */}
       {toast && (
-        <div
-          className="fixed bottom-5 right-5 z-50 rounded-xl px-4 py-3 text-white text-sm font-semibold shadow-lift animate-toast"
-          style={{ background: "var(--brand-green)" }}
-        >
+        <div className="fixed bottom-5 right-5 z-50 rounded-xl px-4 py-3 text-white text-sm font-semibold shadow-lift animate-toast" style={{ background: "var(--brand-green)" }}>
           {toast}
         </div>
       )}
       {wa && (
-        <div
-          className="fixed bottom-5 left-5 z-50 rounded-xl px-4 py-3 text-white text-xs font-semibold shadow-lift animate-toast max-w-[260px]"
-          style={{ background: "linear-gradient(135deg, var(--brand-blue), var(--brand-green))" }}
-        >
+        <div className="fixed bottom-5 left-5 z-50 rounded-xl px-4 py-3 text-white text-xs font-semibold shadow-lift animate-toast max-w-[260px]" style={{ background: "linear-gradient(135deg, var(--brand-blue), var(--brand-green))" }}>
           {wa}
         </div>
       )}
@@ -360,17 +301,7 @@ function CustomerPage() {
   );
 }
 
-function Row({
-  label,
-  value,
-  bold,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-  valueColor?: string;
-}) {
+function Row({ label, value, bold, valueColor }: { label: string; value: string; bold?: boolean; valueColor?: string }) {
   return (
     <div className={`flex justify-between text-sm ${bold ? "font-bold text-base" : ""}`}>
       <span>{label}</span>
@@ -379,44 +310,12 @@ function Row({
   );
 }
 
-function Modal({
-  title,
-  accent,
-  children,
-  onClose,
-}: {
-  title: string;
-  accent: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
+function Modal({ title, accent, children, onClose }: { title: string; accent: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-40 bg-black/50 flex items-end sm:items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card rounded-2xl w-full max-w-md p-6 animate-modal"
-        style={{ borderTop: `4px solid ${accent}` }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-40 bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-2xl w-full max-w-md p-6 animate-modal" style={{ borderTop: `4px solid ${accent}` }} onClick={(e) => e.stopPropagation()}>
         {title && <h3 className="font-display text-xl mb-2">{title}</h3>}
         {children}
-      </div>
-    </div>
-  );
-}
-
-function Rec({ icon, title, body, tone }: { icon: string; title: string; body: string; tone: string }) {
-  return (
-    <div
-      className="rounded-xl p-3 flex gap-3 items-start mt-2"
-      style={{ background: "var(--muted)", borderLeft: `4px solid ${tone}` }}
-    >
-      <div className="text-2xl">{icon}</div>
-      <div>
-        <div className="font-semibold text-sm">{title}</div>
-        <div className="text-sm text-muted-foreground">{body}</div>
       </div>
     </div>
   );
