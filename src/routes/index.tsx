@@ -29,11 +29,8 @@ function RoleSelector() {
   return (
     <main className="bg-gradient-hero min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <header className="text-center mb-10 text-white">
-        <div className="text-[96px] leading-none drop-shadow-lg" aria-hidden>🦜</div>
-        <h1 className="font-display text-5xl sm:text-6xl font-bold mt-2" style={{ textShadow: "0 3px 12px rgba(0,0,0,0.25)" }}>
-          Los Nietos
-        </h1>
-        <p className="mt-2 text-lg font-medium opacity-95">Tu Tienda de Confianza</p>
+        <img src={logo.url} alt="Los Nietos - Semillas y Cereales" className="mx-auto w-full max-w-md rounded-2xl shadow-lift" />
+        <p className="mt-4 text-lg font-medium opacity-95">Tu Tienda de Confianza</p>
       </header>
 
       <div className="grid w-full max-w-3xl grid-cols-1 sm:grid-cols-3 gap-4">
