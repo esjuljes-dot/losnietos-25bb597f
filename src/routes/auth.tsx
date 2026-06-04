@@ -52,9 +52,8 @@ function AuthPage() {
     <main className="bg-gradient-hero min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm bg-card rounded-2xl shadow-lift p-6">
         <div className="text-center mb-5">
-          <div className="text-5xl" aria-hidden>🦜</div>
-          <h1 className="font-display text-2xl mt-2">Los Nietos</h1>
-          <p className="text-sm text-muted-foreground">Acceso del dueño</p>
+          <img src={logo.url} alt="Los Nietos" className="mx-auto w-full max-w-[240px] rounded-xl shadow-card" />
+          <p className="text-sm text-muted-foreground mt-3">Acceso del dueño</p>
         </div>
 
         <div className="flex gap-1 bg-muted rounded-xl p-1 mb-4">
