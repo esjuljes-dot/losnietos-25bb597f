@@ -80,6 +80,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Los Nietos — Tu Tienda de Confianza" },
       { name: "description", content: "Abarrotera Los Nietos: pedidos, entregas y gestión digital en Tecomán, Colima." },
       { name: "author", content: "Los Nietos" },
+      { name: "theme-color", content: "#c4654a" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Los Nietos" },
       { property: "og:title", content: "Los Nietos — Tu Tienda de Confianza" },
       { property: "og:description", content: "Abarrotera Los Nietos: pedidos, entregas y gestión digital." },
       { property: "og:type", content: "website" },
@@ -88,6 +92,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -104,7 +110,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <HeadContent />
       </head>
