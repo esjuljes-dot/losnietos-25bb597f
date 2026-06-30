@@ -20,15 +20,31 @@ type Role = {
 };
 
 const ROLES: Role[] = [
-  { to: "/owner", icon: "📊", name: "Dueño", desc: "Dashboard + IA + Entregas", color: "var(--brand-blue)" },
-  { to: "/driver", icon: "🏍️", name: "Repartidor", desc: "Mis entregas + GPS", color: "var(--brand-orange)" },
+  {
+    to: "/owner",
+    icon: "📊",
+    name: "Dueño",
+    desc: "Dashboard + IA + Entregas",
+    color: "var(--brand-blue)",
+  },
+  {
+    to: "/driver",
+    icon: "🏍️",
+    name: "Repartidor",
+    desc: "Mis entregas + GPS",
+    color: "var(--brand-orange)",
+  },
 ];
 
 function RoleSelector() {
   return (
     <main className="bg-gradient-hero min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <header className="text-center mb-10 text-white">
-        <img src={logo.url} alt="Los Nietos - Semillas y Cereales" className="mx-auto w-full max-w-md rounded-2xl shadow-lift" />
+      <header className="text-center mb-10 text-white w-full max-w-3xl">
+        <img
+          src={logo.url}
+          alt="Los Nietos - Semillas y Cereales"
+          className="mx-auto w-full rounded-2xl shadow-lift object-contain"
+        />
         <p className="mt-4 text-lg font-medium opacity-95">Tu Tienda de Confianza</p>
       </header>
 
@@ -40,7 +56,9 @@ function RoleSelector() {
             className="group bg-card rounded-2xl p-8 text-center shadow-card hover:shadow-lift transition-all duration-200 hover:-translate-y-2"
             style={{ border: `3px solid ${r.color}` }}
           >
-            <div className="text-6xl mb-3" aria-hidden>{r.icon}</div>
+            <div className="text-6xl mb-3" aria-hidden>
+              {r.icon}
+            </div>
             <div className="font-display text-2xl font-bold text-foreground">{r.name}</div>
             <div className="text-sm text-muted-foreground mt-1">{r.desc}</div>
           </Link>

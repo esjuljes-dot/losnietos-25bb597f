@@ -1,15 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RoleHeader } from "@/components/role-header";
-import { DRIVERS, type Order } from "@/lib/los-nietos-data";
-import { useOrders, updateOrderStatus } from "@/lib/orders-store";
+import { type Order } from "@/lib/los-nietos-data";
+import { saveDriverLocation, useDrivers, useOrders, updateOrderStatus } from "@/lib/orders-store";
 
 export const Route = createFileRoute("/driver")({
   head: () => ({
     meta: [
-      { title: "Repartidor · Los Nietos" },
-      { name: "description", content: "Entregas asignadas, GPS en vivo y ruta al cliente." },
+      { title: "Repartidores · Los Nietos" },
+      {
+        name: "description",
+        content: "App de repartidores Los Nietos: entregas asignadas, GPS y ruta al cliente.",
+      },
+      { name: "apple-mobile-web-app-title", content: "Repartidores" },
     ],
+    links: [{ rel: "manifest", href: "/driver.webmanifest" }],
   }),
   component: DriverPage,
 });
@@ -24,9 +30,7 @@ function haversineKm(a: Pos, b: { lat: number; lng: number }) {
   const dLng = ((b.lng - a.lng) * Math.PI) / 180;
   const lat1 = (a.lat * Math.PI) / 180;
   const lat2 = (b.lat * Math.PI) / 180;
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
@@ -59,19 +63,35 @@ function useGeolocation(active: boolean) {
 }
 
 function DriverPage() {
+  const queryClient = useQueryClient();
   const [driverCode, setDriverCode] = useState<string>("");
+  const drivers = useDrivers();
   const orders = useOrders();
   const [tab, setTab] = useState<"pendientes" | "entregadas">("pendientes");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Order["status"] }) =>
+      updateOrderStatus(id, status, driverCode),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
+    onError: (error) => showToast(error instanceof Error ? error.message : "No se pudo actualizar"),
+  });
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (saved) setDriverCode(saved);
   }, []);
 
-  const driver = DRIVERS.find((d) => d.code === driverCode);
+  const driver = drivers.find((d) => d.code === driverCode);
   const { pos: myPos, err: geoErr } = useGeolocation(!!driver);
+
+  useEffect(() => {
+    if (!driver || !myPos) return;
+    saveDriverLocation(driver.code, myPos).catch((error) =>
+      console.warn("No se pudo guardar GPS del repartidor", error),
+    );
+  }, [driver, myPos]);
 
   const myOrders = useMemo(
     () => orders.filter((o) => o.driverCode === driverCode),
@@ -110,7 +130,7 @@ function DriverPage() {
             Selecciona tu código de repartidor para ver tus entregas y activar el GPS.
           </p>
           <ul className="space-y-2">
-            {DRIVERS.map((d) => (
+            {drivers.map((d) => (
               <li key={d.code}>
                 <button
                   onClick={() => pickDriver(d.code)}
@@ -243,9 +263,7 @@ function DriverPage() {
                     </span>
                     <StatusPill status={o.status} />
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1 truncate">
-                    📍 {o.address}
-                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 truncate">📍 {o.address}</div>
                   <div className="text-xs mt-1 flex justify-between">
                     <span>
                       {o.items.length} prod. · ${o.total}
@@ -282,14 +300,9 @@ function DriverPage() {
             <div className="p-5 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs text-muted-foreground font-semibold">
-                    {selected.id}
-                  </div>
+                  <div className="text-xs text-muted-foreground font-semibold">{selected.id}</div>
                   <h3 className="font-display text-xl">{selected.customer}</h3>
-                  <a
-                    href={`tel:${selected.phone}`}
-                    className="text-sm text-primary underline"
-                  >
+                  <a href={`tel:${selected.phone}`} className="text-sm text-primary underline">
                     📞 {selected.phone}
                   </a>
                 </div>
@@ -311,17 +324,13 @@ function DriverPage() {
               </div>
 
               <div>
-                <div className="text-xs text-muted-foreground font-semibold">
-                  💳 FORMA DE PAGO
-                </div>
+                <div className="text-xs text-muted-foreground font-semibold">💳 FORMA DE PAGO</div>
                 <div className="text-sm font-semibold">
                   {selected.payment}{" "}
                   <span
                     className="ml-2 text-[11px] font-bold px-2 py-0.5 rounded-full text-white"
                     style={{
-                      background: selected.paid
-                        ? "var(--brand-green)"
-                        : "var(--brand-orange)",
+                      background: selected.paid ? "var(--brand-green)" : "var(--brand-orange)",
                     }}
                   >
                     {selected.paid ? "PAGADO" : `COBRAR $${selected.total}`}
@@ -335,9 +344,7 @@ function DriverPage() {
               </div>
 
               <div>
-                <div className="text-xs text-muted-foreground font-semibold mb-1">
-                  🛒 PRODUCTOS
-                </div>
+                <div className="text-xs text-muted-foreground font-semibold mb-1">🛒 PRODUCTOS</div>
                 <ul className="text-sm divide-y divide-border border border-border rounded-lg">
                   {selected.items.map((it, i) => (
                     <li key={i} className="flex justify-between px-3 py-2">
@@ -360,7 +367,7 @@ function DriverPage() {
                   {selected.status === "pendiente" && (
                     <button
                       onClick={() => {
-                        updateOrderStatus(selected.id, "en-camino");
+                        statusMutation.mutate({ id: selected.id, status: "en-camino" });
                         showToast("🏍️ En camino");
                       }}
                       className="w-full rounded-2xl py-3 font-bold text-white shadow-card"
@@ -371,7 +378,7 @@ function DriverPage() {
                   )}
                   <button
                     onClick={() => {
-                      updateOrderStatus(selected.id, "entregada");
+                      statusMutation.mutate({ id: selected.id, status: "entregada" });
                       showToast("✓ Entrega completada");
                       setTab("entregadas");
                     }}
