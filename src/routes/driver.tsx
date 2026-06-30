@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RoleHeader } from "@/components/role-header";
-import { DRIVERS, ORDERS, type Order } from "@/lib/los-nietos-data";
+import { DRIVERS, type Order } from "@/lib/los-nietos-data";
+import { useOrders, updateOrderStatus } from "@/lib/orders-store";
 
 export const Route = createFileRoute("/driver")({
   head: () => ({
     meta: [
       { title: "Repartidor · Los Nietos" },
-      { name: "description", content: "Entregas asignadas, mapa y detalle del pedido." },
+      { name: "description", content: "Entregas asignadas, GPS en vivo y ruta al cliente." },
     ],
   }),
   component: DriverPage,
@@ -15,9 +16,51 @@ export const Route = createFileRoute("/driver")({
 
 const STORAGE_KEY = "ln-driver-code";
 
+type Pos = { lat: number; lng: number; accuracy?: number };
+
+function haversineKm(a: Pos, b: { lat: number; lng: number }) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+function useGeolocation(active: boolean) {
+  const [pos, setPos] = useState<Pos | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const watchId = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!active || typeof navigator === "undefined" || !navigator.geolocation) {
+      setErr("Geolocalización no disponible");
+      return;
+    }
+    watchId.current = navigator.geolocation.watchPosition(
+      (p) =>
+        setPos({
+          lat: p.coords.latitude,
+          lng: p.coords.longitude,
+          accuracy: p.coords.accuracy,
+        }),
+      (e) => setErr(e.message),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+    return () => {
+      if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+    };
+  }, [active]);
+
+  return { pos, err };
+}
+
 function DriverPage() {
   const [driverCode, setDriverCode] = useState<string>("");
-  const [orders, setOrders] = useState<Order[]>(ORDERS);
+  const orders = useOrders();
   const [tab, setTab] = useState<"pendientes" | "entregadas">("pendientes");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -28,6 +71,7 @@ function DriverPage() {
   }, []);
 
   const driver = DRIVERS.find((d) => d.code === driverCode);
+  const { pos: myPos, err: geoErr } = useGeolocation(!!driver);
 
   const myOrders = useMemo(
     () => orders.filter((o) => o.driverCode === driverCode),
@@ -55,20 +99,6 @@ function DriverPage() {
     setSelectedId(null);
   };
 
-  const updateStatus = (id: string, status: Order["status"]) => {
-    setOrders((os) =>
-      os.map((o) =>
-        o.id === id
-          ? {
-              ...o,
-              status,
-              progress: status === "entregada" ? 100 : status === "en-camino" ? 60 : 0,
-            }
-          : o,
-      ),
-    );
-  };
-
   // Driver picker
   if (!driver) {
     return (
@@ -77,7 +107,7 @@ function DriverPage() {
         <main className="max-w-md mx-auto px-4 py-8">
           <h2 className="font-display text-2xl mb-1">Identifícate</h2>
           <p className="text-sm text-muted-foreground mb-5">
-            Selecciona tu código de repartidor para ver tus entregas asignadas.
+            Selecciona tu código de repartidor para ver tus entregas y activar el GPS.
           </p>
           <ul className="space-y-2">
             {DRIVERS.map((d) => (
@@ -105,6 +135,21 @@ function DriverPage() {
     );
   }
 
+  const distanceKm = selected && myPos ? haversineKm(myPos, selected) : null;
+  const etaMin = distanceKm != null ? Math.max(1, Math.round((distanceKm / 25) * 60)) : null; // 25 km/h moto urbana
+
+  const mapSrc = selected
+    ? myPos
+      ? `https://maps.google.com/maps?saddr=${myPos.lat},${myPos.lng}&daddr=${selected.lat},${selected.lng}&output=embed`
+      : `https://www.google.com/maps?q=${selected.lat},${selected.lng}&z=16&output=embed`
+    : null;
+
+  const directionsHref = selected
+    ? myPos
+      ? `https://www.google.com/maps/dir/?api=1&origin=${myPos.lat},${myPos.lng}&destination=${selected.lat},${selected.lng}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`
+    : "#";
+
   return (
     <div className="min-h-screen bg-background pb-10">
       <RoleHeader
@@ -125,6 +170,17 @@ function DriverPage() {
           <div>
             <div className="text-xs text-muted-foreground font-semibold">REPARTIDOR</div>
             <div className="font-display text-lg">{driver.name}</div>
+            <div className="text-[11px] mt-1 flex items-center gap-1">
+              <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{ background: myPos ? "var(--brand-green)" : "var(--brand-orange)" }}
+              />
+              {myPos
+                ? `GPS activo · ±${Math.round(myPos.accuracy ?? 0)}m`
+                : geoErr
+                  ? `GPS: ${geoErr}`
+                  : "Buscando GPS…"}
+            </div>
           </div>
           <span
             className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
@@ -154,9 +210,7 @@ function DriverPage() {
                 tab === t ? "bg-card shadow-sm" : "text-muted-foreground"
               }`}
             >
-              {t} (
-              {t === "pendientes" ? pendientes.length : entregadas.length}
-              )
+              {t} ({t === "pendientes" ? pendientes.length : entregadas.length})
             </button>
           ))}
         </div>
@@ -173,47 +227,56 @@ function DriverPage() {
         {/* Order list */}
         {list.length > 0 && (
           <section className="space-y-2">
-            {list.map((o) => (
-              <button
-                key={o.id}
-                onClick={() => setSelectedId(o.id)}
-                className={`w-full bg-card rounded-xl p-3 shadow-card text-left border-2 transition-colors ${
-                  selected?.id === o.id ? "border-primary" : "border-transparent"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm">
-                    {o.id} · {o.customer}
-                  </span>
-                  <StatusPill status={o.status} />
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 truncate">
-                  📍 {o.address}
-                </div>
-                <div className="text-xs mt-1 flex justify-between">
-                  <span>
-                    {o.items.length} prod. · ${o.total}
-                  </span>
-                  <span className="font-semibold">
-                    {o.payment} {o.paid ? "· PAGADO" : "· COBRAR"}
-                  </span>
-                </div>
-              </button>
-            ))}
+            {list.map((o) => {
+              const dist = myPos ? haversineKm(myPos, o) : null;
+              return (
+                <button
+                  key={o.id}
+                  onClick={() => setSelectedId(o.id)}
+                  className={`w-full bg-card rounded-xl p-3 shadow-card text-left border-2 transition-colors ${
+                    selected?.id === o.id ? "border-primary" : "border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">
+                      {o.id} · {o.customer}
+                    </span>
+                    <StatusPill status={o.status} />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 truncate">
+                    📍 {o.address}
+                  </div>
+                  <div className="text-xs mt-1 flex justify-between">
+                    <span>
+                      {o.items.length} prod. · ${o.total}
+                      {dist != null && ` · ${dist.toFixed(1)} km`}
+                    </span>
+                    <span className="font-semibold">
+                      {o.payment} {o.paid ? "· PAGADO" : "· COBRAR"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </section>
         )}
 
         {/* Selected order detail */}
-        {selected && (
+        {selected && mapSrc && (
           <section className="bg-card rounded-2xl shadow-card overflow-hidden">
-            {/* Map */}
-            <div className="relative w-full h-64 bg-muted">
+            {/* Map with live route */}
+            <div className="relative w-full h-72 bg-muted">
               <iframe
                 title={`Mapa ${selected.id}`}
                 className="absolute inset-0 w-full h-full border-0"
                 loading="lazy"
-                src={`https://www.google.com/maps?q=${selected.lat},${selected.lng}&z=16&output=embed`}
+                src={mapSrc}
               />
+              {distanceKm != null && (
+                <div className="absolute top-2 left-2 bg-card/95 backdrop-blur rounded-lg px-3 py-1.5 shadow-card text-xs font-bold">
+                  📏 {distanceKm.toFixed(2)} km · ⏱ ~{etaMin} min
+                </div>
+              )}
             </div>
 
             <div className="p-5 space-y-4">
@@ -237,13 +300,13 @@ function DriverPage() {
                 <div className="text-xs text-muted-foreground font-semibold">📍 DIRECCIÓN</div>
                 <div className="text-sm">{selected.address}</div>
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`}
+                  href={directionsHref}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-2 inline-block rounded-xl px-4 py-2 font-semibold text-white text-sm"
                   style={{ background: "var(--brand-blue)" }}
                 >
-                  🧭 Cómo llegar
+                  🧭 Abrir en Google Maps
                 </a>
               </div>
 
@@ -297,7 +360,7 @@ function DriverPage() {
                   {selected.status === "pendiente" && (
                     <button
                       onClick={() => {
-                        updateStatus(selected.id, "en-camino");
+                        updateOrderStatus(selected.id, "en-camino");
                         showToast("🏍️ En camino");
                       }}
                       className="w-full rounded-2xl py-3 font-bold text-white shadow-card"
@@ -308,7 +371,7 @@ function DriverPage() {
                   )}
                   <button
                     onClick={() => {
-                      updateStatus(selected.id, "entregada");
+                      updateOrderStatus(selected.id, "entregada");
                       showToast("✓ Entrega completada");
                       setTab("entregadas");
                     }}
