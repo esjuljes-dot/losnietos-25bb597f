@@ -372,7 +372,7 @@ function DeliveriesSection() {
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
         {DRIVERS.map((d) => {
-          const count = ORDERS.filter((o) => o.driverCode === d.code && o.status !== "entregada").length;
+          const count = orders.filter((o: Order) => o.driverCode === d.code && o.status !== "entregada").length;
           return (
             <button key={d.code} onClick={() => setDriverFilter(d.code)} className={`rounded-xl p-2 text-left border-2 transition-colors ${driverFilter === d.code ? "border-primary bg-accent" : "border-transparent bg-muted"}`}>
               <div className="flex items-center justify-between">
