@@ -5,14 +5,14 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Los Nietos — Selecciona tu rol" },
-      { name: "description", content: "Entra como Dueño, Cliente o Repartidor en Los Nietos." },
+      { name: "description", content: "Entra como Dueño o Repartidor en Los Nietos." },
     ],
   }),
   component: RoleSelector,
 });
 
 type Role = {
-  to: "/owner" | "/customer" | "/driver";
+  to: "/owner" | "/driver";
   icon: string;
   name: string;
   desc: string;
@@ -20,9 +20,8 @@ type Role = {
 };
 
 const ROLES: Role[] = [
-  { to: "/owner", icon: "📊", name: "Dueño", desc: "Dashboard + IA", color: "var(--brand-blue)" },
-  { to: "/customer", icon: "🛒", name: "Cliente", desc: "Compra rápida", color: "var(--brand-red)" },
-  { to: "/driver", icon: "🏍️", name: "Repartidor", desc: "Entregas", color: "var(--brand-orange)" },
+  { to: "/owner", icon: "📊", name: "Dueño", desc: "Dashboard + IA + Entregas", color: "var(--brand-blue)" },
+  { to: "/driver", icon: "🏍️", name: "Repartidor", desc: "Mis entregas + GPS", color: "var(--brand-orange)" },
 ];
 
 function RoleSelector() {
@@ -33,16 +32,16 @@ function RoleSelector() {
         <p className="mt-4 text-lg font-medium opacity-95">Tu Tienda de Confianza</p>
       </header>
 
-      <div className="grid w-full max-w-3xl grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid w-full max-w-2xl grid-cols-1 sm:grid-cols-2 gap-4">
         {ROLES.map((r) => (
           <Link
             key={r.to}
             to={r.to}
-            className="group bg-card rounded-2xl p-6 text-center shadow-card hover:shadow-lift transition-all duration-200 hover:-translate-y-2"
+            className="group bg-card rounded-2xl p-8 text-center shadow-card hover:shadow-lift transition-all duration-200 hover:-translate-y-2"
             style={{ border: `3px solid ${r.color}` }}
           >
-            <div className="text-5xl mb-3" aria-hidden>{r.icon}</div>
-            <div className="font-display text-xl font-bold text-foreground">{r.name}</div>
+            <div className="text-6xl mb-3" aria-hidden>{r.icon}</div>
+            <div className="font-display text-2xl font-bold text-foreground">{r.name}</div>
             <div className="text-sm text-muted-foreground mt-1">{r.desc}</div>
           </Link>
         ))}

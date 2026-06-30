@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { RoleHeader } from "@/components/role-header";
-import { ORDERS, DRIVERS, type Order } from "@/lib/los-nietos-data";
+import { DRIVERS, type Order } from "@/lib/los-nietos-data";
+import { useOrders } from "@/lib/orders-store";
 import { listProducts, upsertProduct, deleteProduct, type Product } from "@/lib/products.functions";
 import { runSalesAnalysis } from "@/lib/ai-analysis.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,13 +70,15 @@ function OwnerPage() {
 function DashboardSection() {
   const fetchProducts = useServerFn(listProducts);
   const { data: products = [] } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts() });
+  const orders = useOrders();
   const [aiOpen, setAiOpen] = useState(false);
 
   const metrics = useMemo(() => {
     const sales = products.reduce((s, p) => s + p.price * p.sales, 0);
     const margin = products.reduce((s, p) => s + (p.price - p.cost) * p.sales, 0);
-    return { sales, orders: ORDERS.length, customers: new Set(ORDERS.map((o) => o.customer)).size, margin };
-  }, [products]);
+    return { sales, orders: orders.length, customers: new Set(orders.map((o) => o.customer)).size, margin };
+  }, [products, orders]);
+
 
   const top = useMemo(
     () => [...products].map((p) => ({ ...p, mar: (p.price - p.cost) * p.sales })).sort((a, b) => b.mar - a.mar).slice(0, 5),
@@ -341,19 +344,21 @@ function NumberInput({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 function DeliveriesSection() {
+  const orders = useOrders();
   const [tab, setTab] = useState<"pendientes" | "entregadas">("pendientes");
   const [driverFilter, setDriverFilter] = useState<string>("todos");
 
   const filtered = useMemo(() => {
-    return ORDERS.filter((o) => {
+    return orders.filter((o) => {
       const matchStatus = tab === "pendientes" ? o.status !== "entregada" : o.status === "entregada";
       const matchDriver = driverFilter === "todos" || o.driverCode === driverFilter;
       return matchStatus && matchDriver;
     });
-  }, [tab, driverFilter]);
+  }, [orders, tab, driverFilter]);
 
-  const pendCount = ORDERS.filter((o) => o.status !== "entregada").length;
-  const entCount = ORDERS.filter((o) => o.status === "entregada").length;
+  const pendCount = orders.filter((o) => o.status !== "entregada").length;
+  const entCount = orders.filter((o) => o.status === "entregada").length;
+
 
   return (
     <section className="bg-card rounded-2xl p-5 shadow-card">
@@ -367,7 +372,7 @@ function DeliveriesSection() {
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
         {DRIVERS.map((d) => {
-          const count = ORDERS.filter((o) => o.driverCode === d.code && o.status !== "entregada").length;
+          const count = orders.filter((o: Order) => o.driverCode === d.code && o.status !== "entregada").length;
           return (
             <button key={d.code} onClick={() => setDriverFilter(d.code)} className={`rounded-xl p-2 text-left border-2 transition-colors ${driverFilter === d.code ? "border-primary bg-accent" : "border-transparent bg-muted"}`}>
               <div className="flex items-center justify-between">

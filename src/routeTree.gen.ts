@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DriverRouteImport } from './routes/driver'
-import { Route as CustomerRouteImport } from './routes/customer'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,11 +18,6 @@ import { Route as AuthenticatedOwnerRouteImport } from './routes/_authenticated/
 const DriverRoute = DriverRouteImport.update({
   id: '/driver',
   path: '/driver',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomerRoute = CustomerRouteImport.update({
-  id: '/customer',
-  path: '/customer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -49,14 +43,12 @@ const AuthenticatedOwnerRoute = AuthenticatedOwnerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/customer': typeof CustomerRoute
   '/driver': typeof DriverRoute
   '/owner': typeof AuthenticatedOwnerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/customer': typeof CustomerRoute
   '/driver': typeof DriverRoute
   '/owner': typeof AuthenticatedOwnerRoute
 }
@@ -65,21 +57,19 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/customer': typeof CustomerRoute
   '/driver': typeof DriverRoute
   '/_authenticated/owner': typeof AuthenticatedOwnerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/customer' | '/driver' | '/owner'
+  fullPaths: '/' | '/auth' | '/driver' | '/owner'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/customer' | '/driver' | '/owner'
+  to: '/' | '/auth' | '/driver' | '/owner'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/customer'
     | '/driver'
     | '/_authenticated/owner'
   fileRoutesById: FileRoutesById
@@ -88,7 +78,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  CustomerRoute: typeof CustomerRoute
   DriverRoute: typeof DriverRoute
 }
 
@@ -99,13 +88,6 @@ declare module '@tanstack/react-router' {
       path: '/driver'
       fullPath: '/driver'
       preLoaderRoute: typeof DriverRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customer': {
-      id: '/customer'
-      path: '/customer'
-      fullPath: '/customer'
-      preLoaderRoute: typeof CustomerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -154,7 +136,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  CustomerRoute: CustomerRoute,
   DriverRoute: DriverRoute,
 }
 export const routeTree = rootRouteImport
