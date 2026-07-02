@@ -2,9 +2,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const FALLBACK_SUPABASE_URL = "https://hphzaexeoxytbbgmmpuv.supabase.co";
-const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwaHphZXhlb3h5dGJiZ21tcHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDMyMzYsImV4cCI6MjA5NjA3OTIzNn0.vV3GUcdOmzVdGrNaQdSzU6XkNdXkyCciMEm0HSMdi7E";
+const FALLBACK_SUPABASE_URL = "https://pwnrktrxxezwzkinuwmm.supabase.co";
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_E9eUS8p64GXPwOL8je9LEQ_qHPqaoYg";
 
 function createSupabaseClient() {
   // Lovable reserves SUPABASE_* and VITE_* secret names, so keep a safe
