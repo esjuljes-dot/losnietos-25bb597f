@@ -21,8 +21,28 @@ export const Route = createFileRoute("/driver")({
 });
 
 const STORAGE_KEY = "ln-driver-code";
+const WHATSAPP_COUNTRY_CODE = "52";
 
 type Pos = { lat: number; lng: number; accuracy?: number };
+
+function whatsappHref(phone: string, message: string) {
+  const digits = phone.replace(/\D/g, "");
+  const normalized = digits.startsWith(WHATSAPP_COUNTRY_CODE)
+    ? digits
+    : `${WHATSAPP_COUNTRY_CODE}${digits}`;
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+function customerDeliveryMessage(order: Order, driverName: string) {
+  return [
+    `Hola ${order.customer}, soy ${driverName}, repartidor de Los Nietos.`,
+    `Voy con tu pedido ${order.id} por $${order.total}.`,
+    `Dirección: ${order.address}.`,
+    order.paid
+      ? "El pedido aparece pagado."
+      : `Forma de pago: ${order.payment}. Total a cobrar: $${order.total}.`,
+  ].join("\n");
+}
 
 function haversineKm(a: Pos, b: { lat: number; lng: number }) {
   const R = 6371;
@@ -302,9 +322,23 @@ function DriverPage() {
                 <div>
                   <div className="text-xs text-muted-foreground font-semibold">{selected.id}</div>
                   <h3 className="font-display text-xl">{selected.customer}</h3>
-                  <a href={`tel:${selected.phone}`} className="text-sm text-primary underline">
-                    📞 {selected.phone}
-                  </a>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <a href={`tel:${selected.phone}`} className="text-sm text-primary underline">
+                      📞 {selected.phone}
+                    </a>
+                    <a
+                      href={whatsappHref(
+                        selected.phone,
+                        customerDeliveryMessage(selected, driver.name),
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold underline"
+                      style={{ color: "var(--brand-green)" }}
+                    >
+                      WhatsApp
+                    </a>
+                  </div>
                 </div>
                 <StatusPill status={selected.status} />
               </div>

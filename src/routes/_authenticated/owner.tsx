@@ -21,8 +21,35 @@ export const Route = createFileRoute("/_authenticated/owner")({
 
 const HOURLY = [12, 28, 22, 35, 48, 55, 40, 30];
 const HOURS = ["8a", "10a", "12p", "2p", "4p", "6p", "8p", "10p"];
+const WHATSAPP_COUNTRY_CODE = "52";
 
 type Tab = "dashboard" | "productos" | "entregas";
+
+function whatsappHref(phone: string, message: string) {
+  const digits = phone.replace(/\D/g, "");
+  const normalized = digits.startsWith(WHATSAPP_COUNTRY_CODE)
+    ? digits
+    : `${WHATSAPP_COUNTRY_CODE}${digits}`;
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+function customerOrderMessage(order: Order) {
+  return [
+    `Hola ${order.customer}, te saluda Los Nietos Distribuidora.`,
+    `Confirmamos tu pedido ${order.id} por $${order.total}.`,
+    `Estatus: ${order.status === "en-camino" ? "en camino" : order.status}.`,
+    `Dirección: ${order.address}.`,
+  ].join("\n");
+}
+
+function driverAssignmentMessage(order: Order, driverName?: string) {
+  return [
+    `Hola ${driverName ?? "repartidor"}, tienes asignado el pedido ${order.id}.`,
+    `Cliente: ${order.customer} (${order.phone}).`,
+    `Dirección: ${order.address}.`,
+    `Total: $${order.total} · ${order.payment}${order.paid ? " · pagado" : " · cobrar"}.`,
+  ].join("\n");
+}
 
 function OwnerPage() {
   const navigate = useNavigate();
@@ -620,16 +647,40 @@ function OrderRow({ order }: { order: Order }) {
             <div>
               <div className="text-[11px] font-semibold text-muted-foreground">CLIENTE</div>
               <div>{order.customer}</div>
-              <a href={`tel:${order.phone}`} className="text-primary underline text-xs">
-                📞 {order.phone}
-              </a>
+              <div className="flex flex-wrap gap-2">
+                <a href={`tel:${order.phone}`} className="text-primary underline text-xs">
+                  📞 {order.phone}
+                </a>
+                <a
+                  href={whatsappHref(order.phone, customerOrderMessage(order))}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline text-xs font-semibold"
+                  style={{ color: "var(--brand-green)" }}
+                >
+                  WhatsApp cliente
+                </a>
+              </div>
             </div>
             <div>
               <div className="text-[11px] font-semibold text-muted-foreground">REPARTIDOR</div>
               <div>
                 {driver?.name} ({order.driverCode})
               </div>
-              <div className="text-xs text-muted-foreground">{driver?.phone}</div>
+              <div className="flex flex-wrap gap-2">
+                <div className="text-xs text-muted-foreground">{driver?.phone}</div>
+                {driver?.phone && (
+                  <a
+                    href={whatsappHref(driver.phone, driverAssignmentMessage(order, driver.name))}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline text-xs font-semibold"
+                    style={{ color: "var(--brand-green)" }}
+                  >
+                    WhatsApp repartidor
+                  </a>
+                )}
+              </div>
             </div>
             <div className="sm:col-span-2">
               <div className="text-[11px] font-semibold text-muted-foreground">DIRECCIÓN</div>
